@@ -36,41 +36,22 @@
         Clear
       </button>
     </div>
-    <div class="tools-right">
-      <SettingsDropdown :settings="settings" @update:settings="emit('settingsChange', $event)" />
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{
-  settings: {
-    indentSize: number
-    arrayDisplay: 'inline' | 'block'
-    showTypeInfo: boolean
-    asciiTreeStyle: boolean
-  }
-}>()
-
 const emit = defineEmits<{
   beautify: []
   minify: []
   validate: []
   loadExample: []
   clear: []
-  settingsChange: [settings: {
-    indentSize: number
-    arrayDisplay: 'inline' | 'block'
-    showTypeInfo: boolean
-    asciiTreeStyle: boolean
-  }]
 }>()
 </script>
 
 <style scoped>
 .tools-panel {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 1rem;
   margin-bottom: 1.5rem;
@@ -86,10 +67,6 @@ const emit = defineEmits<{
   flex-wrap: wrap;
 }
 
-.tools-right {
-  display: flex;
-  align-items: center;
-}
 
 .tool-btn {
   display: inline-flex;
@@ -128,10 +105,6 @@ const emit = defineEmits<{
     justify-content: space-between;
   }
   
-  .tools-right {
-    width: 100%;
-    justify-content: flex-end;
-  }
 }
 </style>
 

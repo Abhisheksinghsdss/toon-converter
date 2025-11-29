@@ -15,13 +15,11 @@
 
         <!-- Tools Panel -->
         <ToolsPanel 
-          :settings="settings"
           @beautify="beautifyJson"
           @minify="minifyJson"
           @validate="validateJson"
           @load-example="loadExample"
           @clear="clearAll"
-          @settings-change="updateSettings"
         />
 
         <!-- Main Editors Section -->
@@ -43,6 +41,26 @@
           :loading="isConverting"
           @convert="convertToToon"
         />
+
+        <!-- Token Stats -->
+        <div v-if="toonOutput && jsonTokenCount > 0" class="token-stats">
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-label">JSON Tokens</div>
+              <div class="stat-value">{{ jsonTokenCount.toLocaleString() }}</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">TOON Tokens</div>
+              <div class="stat-value">{{ toonTokenCount.toLocaleString() }}</div>
+            </div>
+            <div class="stat-item" :class="savedPercentage >= 0 ? 'stat-item-saved' : 'stat-item-increased'">
+              <div class="stat-label">{{ savedPercentage >= 0 ? 'Saved' : 'Increased' }}</div>
+              <div class="stat-value" :class="savedPercentage >= 0 ? 'stat-value-saved' : 'stat-value-increased'">
+                {{ Math.abs(savedPercentage).toFixed(1) }}%
+              </div>
+            </div>
+          </div>
+        </div>
 
         <!-- Footer -->
         <footer class="footer">
@@ -75,6 +93,9 @@ const isJsonValid = ref(true)
 const isConverting = ref(false)
 const showToastMessage = ref(false)
 const toastText = ref('')
+const jsonTokenCount = ref(0)
+const toonTokenCount = ref(0)
+const savedPercentage = ref(0)
 
 // Settings
 const settings = ref({
@@ -176,10 +197,21 @@ const clearAll = () => {
   jsonInput.value = ''
   toonOutput.value = ''
   isJsonValid.value = true
+  jsonTokenCount.value = 0
+  toonTokenCount.value = 0
+  savedPercentage.value = 0
 }
 
 const updateSettings = (newSettings: typeof settings.value) => {
   settings.value = { ...newSettings }
+}
+
+// Token counting function (approximation: ~4 characters per token)
+const countTokens = (text: string): number => {
+  if (!text || !text.trim()) return 0
+  // Simple approximation: tokens ≈ characters / 4
+  // This is a common approximation for GPT models
+  return Math.ceil(text.length / 4)
 }
 
 // Conversion
@@ -195,6 +227,20 @@ const convertToToon = async () => {
     await new Promise(resolve => setTimeout(resolve, 0))
     const result = convertJsonToToon(parsed, settings.value)
     toonOutput.value = result
+    
+    // Calculate token counts - compare against minified JSON for fair comparison
+    const minifiedJson = JSON.stringify(parsed)
+    jsonTokenCount.value = countTokens(minifiedJson)
+    toonTokenCount.value = countTokens(result)
+    
+    // Calculate saved percentage
+    if (jsonTokenCount.value > 0) {
+      const saved = jsonTokenCount.value - toonTokenCount.value
+      savedPercentage.value = (saved / jsonTokenCount.value) * 100
+    } else {
+      savedPercentage.value = 0
+    }
+    
     showToast('Conversion complete!')
   } catch (e) {
     showToast('Conversion failed', true)
@@ -204,78 +250,158 @@ const convertToToon = async () => {
   }
 }
 
+// Check if array is tabular (all objects with same keys, only primitive values)
+const isTabularArray = (arr: any[]): boolean => {
+  if (arr.length === 0) return false
+  
+  const firstItem = arr[0]
+  if (typeof firstItem !== 'object' || firstItem === null || Array.isArray(firstItem)) {
+    return false
+  }
+  
+  const keys = Object.keys(firstItem)
+  if (keys.length === 0) return false
+  
+  // Check all items have same structure and only primitive values
+  for (const item of arr) {
+    if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+      return false
+    }
+    
+    const itemKeys = Object.keys(item)
+    if (itemKeys.length !== keys.length || !itemKeys.every(k => keys.includes(k))) {
+      return false
+    }
+    
+    // Check all values are primitives (not objects or arrays)
+    for (const value of Object.values(item)) {
+      if (value !== null && typeof value === 'object') {
+        return false
+      }
+    }
+  }
+  
+  return true
+}
+
 const convertJsonToToon = (
   obj: any,
   settings: typeof settings.value,
   indent: number = 0
 ): string => {
   if (indent > 20) {
-    return '... (max depth reached)'
+    return '...'
   }
   
-  const indentStr = ' '.repeat(indent * settings.indentSize)
   const nextIndent = indent + 1
+  const indentSize = Math.min(settings.indentSize, 1) // Use minimal indentation for token efficiency
+  const indentStr = ' '.repeat(indent * indentSize)
+  const delimiter = ',' // Use comma delimiter for tabular data
   
-  if (obj === null) return 'null'
-  if (obj === undefined) return 'undefined'
-  if (typeof obj === 'string') return `"${obj}"`
+  if (obj === null) return ''
+  if (obj === undefined) return ''
+  if (typeof obj === 'string') return obj
   if (typeof obj === 'number' || typeof obj === 'boolean') return String(obj)
   
   if (Array.isArray(obj)) {
-    if (obj.length === 0) return '[] (empty array)'
+    if (obj.length === 0) return '[]'
     
-    if (settings.arrayDisplay === 'inline' && obj.length <= 5 && indent < 3) {
-      const items = obj.map(item => {
-        const converted = convertJsonToToon(item, settings, nextIndent)
-        return converted
+    // Check if this is a tabular array (most token-efficient format)
+    if (isTabularArray(obj)) {
+      const firstItem = obj[0]
+      const keys = Object.keys(firstItem)
+      const lengthMarker = `[${obj.length}]`
+      let result = `items${lengthMarker}{${keys.join(delimiter)}}:\n`
+      
+      obj.forEach(item => {
+        const values = keys.map(key => {
+          const val = item[key]
+          if (val === null || val === undefined) return ''
+          if (typeof val === 'string') return val
+          return String(val)
+        })
+        result += indentStr + values.join(delimiter) + '\n'
       })
-      return `[${items.join(', ')}]`
+      
+      return result
     }
     
-    const items: string[] = []
-    const prefix = settings.asciiTreeStyle ? '├─' : '-'
-    
-    for (let i = 0; i < obj.length; i++) {
-      const converted = convertJsonToToon(obj[i], settings, nextIndent)
-      const typeInfo = settings.showTypeInfo ? ` (${getValueType(obj[i])})` : ''
-      const isLast = i === obj.length - 1
-      const treePrefix = settings.asciiTreeStyle ? (isLast ? '└─' : prefix) : '-'
-      items.push(`${' '.repeat(nextIndent * settings.indentSize)}${treePrefix} [${i}]${typeInfo}: ${converted}`)
+    // For small primitive arrays, use inline format
+    if (obj.length <= 10 && indent < 4 && obj.every(item => 
+      item === null || item === undefined || (typeof item !== 'object')
+    )) {
+      const items = obj.map(item => {
+        if (item === null || item === undefined) return ''
+        if (typeof item === 'string') return item
+        return String(item)
+      })
+      const inline = `[${items.join(delimiter)}]`
+      if (inline.length < 60 || obj.length <= 5) {
+        return inline
+      }
     }
     
-    return `Array[${obj.length}]\n${items.join('\n')}`
+    // Use compact list format for non-tabular arrays
+    const lengthMarker = `[${obj.length}]`
+    let result = `items${lengthMarker}:\n`
+    
+    obj.forEach(item => {
+      if (Array.isArray(item) || (typeof item === 'object' && item !== null)) {
+        const converted = convertJsonToToon(item, settings, nextIndent)
+        result += indentStr + '- ' + converted.trimStart()
+      } else {
+        const val = item === null || item === undefined ? '' : String(item)
+        result += indentStr + '- ' + val + '\n'
+      }
+    })
+    
+    return result
   }
   
   if (typeof obj === 'object') {
     const keys = Object.keys(obj)
-    if (keys.length === 0) return '{} (empty object)'
+    if (keys.length === 0) return '{}'
     
-    const items: string[] = []
-    const prefix = settings.asciiTreeStyle ? '├─' : '-'
-    
-    for (let i = 0; i < keys.length; i++) {
-      const key = keys[i]
-      const value = obj[key]
-      const converted = convertJsonToToon(value, settings, nextIndent)
-      const typeInfo = settings.showTypeInfo ? ` (${getValueType(value)})` : ''
-      const isLast = i === keys.length - 1
-      const treePrefix = settings.asciiTreeStyle ? (isLast ? '└─' : prefix) : '-'
-      items.push(`${' '.repeat(nextIndent * settings.indentSize)}${treePrefix} ${key}${typeInfo}: ${converted}`)
+    // Try inline format for small objects with primitive values
+    if (keys.length <= 5 && indent < 3) {
+      const allPrimitives = keys.every(k => {
+        const v = obj[k]
+        return v === null || v === undefined || typeof v !== 'object'
+      })
+      if (allPrimitives) {
+        const pairs = keys.map(k => {
+          const v = obj[k]
+          if (v === null || v === undefined) return `${k}:`
+          if (typeof v === 'string') return `${k}:${v}`
+          return `${k}:${v}`
+        })
+        const inline = `{${pairs.join(delimiter)}}`
+        if (inline.length < 80) {
+          return inline
+        }
+      }
     }
     
-    return `Object[${keys.length} properties]\n${items.join('\n')}`
+    // Use compact object format
+    let result = ''
+    keys.forEach((key, i) => {
+      const value = obj[key]
+      if (Array.isArray(value)) {
+        result += indentStr + key + ': ' + convertJsonToToon(value, settings, nextIndent)
+      } else if (typeof value === 'object' && value !== null) {
+        result += indentStr + key + ':\n' + convertJsonToToon(value, settings, nextIndent)
+      } else {
+        const val = value === null || value === undefined ? '' : String(value)
+        result += indentStr + key + ': ' + val + '\n'
+      }
+    })
+    
+    return result
   }
   
   return String(obj)
 }
 
-const getValueType = (value: any): string => {
-  if (value === null) return 'null'
-  if (value === undefined) return 'undefined'
-  if (Array.isArray(value)) return `array[${value.length}]`
-  if (typeof value === 'object') return `object[${Object.keys(value).length} keys]`
-  return typeof value
-}
 
 // Toast
 const showToast = (message: string, isError: boolean = false) => {
@@ -368,6 +494,75 @@ const showToast = (message: string, isError: boolean = false) => {
 
 .footer-link:hover {
   color: #667eea;
+}
+
+.token-stats {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  border: 1px solid #dee2e6;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.stat-item-saved {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.stat-item-increased {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.stat-item-saved .stat-label,
+.stat-item-increased .stat-label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1.2;
+}
+
+.stat-value-saved,
+.stat-value-increased {
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+  }
 }
 
 .toast {
