@@ -1,6 +1,6 @@
-# JSON to Toon Converter
+# TOONLY.ONLINE
 
-A free, fast, and easy-to-use online tool for converting JSON data to toon format. Built with Nuxt 4 and Vue 3.
+A free, fast, and easy-to-use online tool for converting JSON data to TOON format. Built with Nuxt 4 and Vue 3.
 
 ## Features
 

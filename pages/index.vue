@@ -1,8 +1,8 @@
 <template>
   <div class="container">
     <header class="header">
-      <h1 class="title">JSON to Toon Converter</h1>
-      <p class="subtitle">Convert your JSON data to toon format instantly</p>
+      <h1 class="title">TOONLY.ONLINE</h1>
+      <p class="subtitle">Convert your JSON data to TOON format instantly</p>
     </header>
 
     <main class="main-content">
@@ -58,7 +58,7 @@
 
 <script setup lang="ts">
 definePageMeta({
-  title: 'JSON to Toon Converter'
+  title: 'TOONLY.ONLINE - JSON to TOON Converter'
 })
 
 const jsonInput = ref('')
