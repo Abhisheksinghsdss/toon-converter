@@ -135,6 +135,52 @@
 definePageMeta({
   title: 'About - TOONLY.ONLINE'
 })
+
+// SEO Meta Tags
+useSeoMeta({
+  title: 'About TOONLY.ONLINE - Free JSON to TOON Converter',
+  description: 'Learn about TOONLY.ONLINE, a free online tool to convert JSON data to TOON format. Discover features, how to use, privacy policy, and tech stack.',
+  keywords: 'toonly online about, json to toon converter about, json converter features, toon format tool, developer tools',
+  ogTitle: 'About TOONLY.ONLINE - Free JSON to TOON Converter',
+  ogDescription: 'Learn about TOONLY.ONLINE, a free online tool to convert JSON data to TOON format. Discover features, how to use, privacy policy, and tech stack.',
+  ogUrl: 'https://toonly.online/about',
+  ogImage: 'https://toonly.online/og-image.png',
+  ogType: 'website',
+  twitterCard: 'summary_large_image',
+  twitterTitle: 'About TOONLY.ONLINE - Free JSON to TOON Converter',
+  twitterDescription: 'Learn about TOONLY.ONLINE, a free online tool to convert JSON data to TOON format.',
+  twitterImage: 'https://toonly.online/og-image.png',
+  robots: 'index, follow',
+  canonical: 'https://toonly.online/about'
+})
+
+// Structured Data for About Page
+useHead({
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'AboutPage',
+        name: 'About TOONLY.ONLINE',
+        description: 'Learn about TOONLY.ONLINE, a free online tool to convert JSON data to TOON format.',
+        url: 'https://toonly.online/about',
+        mainEntity: {
+          '@type': 'WebApplication',
+          name: 'TOONLY.ONLINE',
+          description: 'Free online tool to convert JSON data to TOON format',
+          url: 'https://toonly.online',
+          applicationCategory: 'DeveloperApplication',
+          offers: {
+            '@type': 'Offer',
+            price: '0',
+            priceCurrency: 'USD'
+          }
+        }
+      })
+    }
+  ]
+})
 </script>
 
 <style scoped>

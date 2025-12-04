@@ -61,6 +61,57 @@ definePageMeta({
   title: 'TOONLY.ONLINE - JSON to TOON Converter'
 })
 
+// SEO Meta Tags
+useSeoMeta({
+  title: 'TOONLY.ONLINE - Free JSON to TOON Converter',
+  description: 'Convert JSON data to TOON format instantly with our free online converter. Simple, fast, and easy to use tool for developers. No registration required.',
+  keywords: 'json to toon, json converter, toon converter, json to toon converter, online json tool, json formatter, toon format, json parser, data converter, developer tools',
+  ogTitle: 'TOONLY.ONLINE - Free JSON to TOON Converter',
+  ogDescription: 'Convert JSON data to TOON format instantly with our free online converter. Simple, fast, and easy to use tool for developers.',
+  ogUrl: 'https://toonly.online',
+  ogImage: 'https://toonly.online/og-image.png',
+  ogType: 'website',
+  twitterCard: 'summary_large_image',
+  twitterTitle: 'TOONLY.ONLINE - Free JSON to TOON Converter',
+  twitterDescription: 'Convert JSON data to TOON format instantly with our free online converter.',
+  twitterImage: 'https://toonly.online/og-image.png',
+  robots: 'index, follow',
+  canonical: 'https://toonly.online'
+})
+
+// Structured Data for Homepage
+useHead({
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebApplication',
+        name: 'TOONLY.ONLINE',
+        description: 'Free online tool to convert JSON data to TOON format instantly. Simple, fast, and easy to use tool for developers.',
+        url: 'https://toonly.online',
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'Any',
+        browserRequirements: 'Requires JavaScript. Requires HTML5.',
+        offers: {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'USD'
+        },
+        featureList: [
+          'JSON to TOON format conversion',
+          'Real-time conversion',
+          'Privacy-first (client-side processing)',
+          'No registration required',
+          'Free to use',
+          'Copy to clipboard',
+          'JSON validation'
+        ]
+      })
+    }
+  ]
+})
+
 const jsonInput = ref('')
 const toonOutput = ref('')
 const error = ref('')
